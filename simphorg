@@ -1,0 +1,79 @@
+#!/bin/bash
+
+# *************************************************************************************************
+# simphorg name comes from Simple Media Organization.
+#
+# Script bash to allow to rename and classify multimedia files.
+#
+# *************************************************************************************************
+# License: GPL
+# Author: Pascal Fluck (PFComputing)
+# *************************************************************************************************
+
+display_usage() { 
+	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera. \n" 
+	echo -e "Usage:\n$0 -h -R -r [file or directory] [destination\n" 
+	echo -e "Arguments:" 
+	echo -e "-r  --rename            Rename files with the date taken using format yyMMdd_hhmmss." 
+	echo -e "-R  --recursive         Execute action(s) recursively."
+	echo -e "-c  --classify=TYPE     Classify the images according the specified TYPE."
+	echo -e "-v  --verbose           Verbose."
+	echo -e "-h  --help              Show usage."
+	echo -e "\n" 
+} 
+
+# if less than two arguments supplied, display usage 
+if [  $# -le 1 ] 
+then 
+	display_usage
+	exit 1
+fi 
+ 
+# check whether user had supplied -h or --help . If yes display usage 
+if [[ ( $# == "--help") ||  $# == "-h" ]] 
+then 
+	display_usage
+	exit 0
+fi 
+
+# Parse parameters
+while [ "$1" != "" ]; do
+	case $1 in
+        -r | --rename )          
+			RENAME=1
+            ;;
+	    -o | --output-file )
+	        shift
+	        CLASSIFY=1
+	        CLASSIFICATION_TYPE="$1"
+	        ;;
+	    -o=* | --output-file=* )
+	        CLASSIFY=1
+	        CLASSIFICATION_TYPE="${key#*=}"
+	        ;;
+        -v | --verbose )
+			EXIFTOOL_VERBOSE=-v
+			;;
+        -R | --recursive )           
+			RECURSIVE="-r"
+            ;;
+        * )            
+			PATH=$1
+			;;
+	esac
+    shift
+done
+
+# Initialize base values
+EXIFTOOL_BIN="/usr/bin/exiftool"
+
+# Execute rename command
+if [ $RENAME == 1 ]
+then
+	$EXIFTOOL_BIN '-filename<CreateDate' -d %y%m%d_%H%M%S%%-c.%%le $RECURSIVE $EXIFTOOL_VERBOSE $PATH
+fi
+
+if [ $CLASSIFY == 1 ]
+then
+	
+fi
