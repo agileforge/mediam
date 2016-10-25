@@ -12,14 +12,29 @@
 
 display_usage() { 
 	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera. \n" 
-	echo -e "Usage:\n$0 -h -R -r [file or directory] [destination\n" 
+	echo -e "Usage:\n$0 -h -R -r [file or directory] [destination]\n" 
 	echo -e "Arguments:" 
-	echo -e "-r  --rename            Rename files with the date taken using format yyMMdd_hhmmss." 
-	echo -e "-R  --recursive         Execute action(s) recursively."
-	echo -e "-c  --classify=TYPE     Classify the images according the specified TYPE."
-	echo -e "-v  --verbose           Verbose."
-	echo -e "-h  --help              Show usage."
+	echo -e "-r  --rename                Rename files with the date taken using format yyMMdd_hhmmss." 
+	echo -e "-R  --recursive             Execute action(s) recursively."
+	echo -e "-c  --classify=HIERARCHY    Classify the images according the specified TYPE."
+	echo -e "-a  --action=ACTION         Action type. Could be 'copy', 'move' or 'link'."
+	echo -e "-v  --verbose               Verbose."
+	echo -e "-h  --help                  Show usage."
 	echo -e "\n" 
+	echo -e "HIERARCHY" 
+	echo -e "Hrearchy of classification. Possible to specifiy several levels, comma separated."
+	echo -e "Ex: year,month => create directories for each years, and then inside a directory for each months."
+	echo -e "    year: create a directory for each years of media."
+	echo -e "    month: create a directory for each months of media." 
+	echo -e "    day: create a directory for each days of media." 
+	echo -e "    media: create a directory for each type of media (image or video)" 
+	echo -e "    country: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF." 
+	echo -e "\n" 
+	echo -e "ACTION" 
+	echo -e "Action to do while classifying. Default is 'copy'."
+	echo -e "    copy: make a copy of media in new classification structure."
+	echo -e "    move: move the file in new classification structure." 
+	echo -e "    link: create a symbolic link of media in the new classification structure." 
 } 
 
 # if less than two arguments supplied, display usage 
@@ -36,20 +51,31 @@ then
 	exit 0
 fi 
 
+# Initialize base and default values
+EXIFTOOL_BIN="/usr/bin/exiftool"
+ACTION="copy"
+
 # Parse parameters
 while [ "$1" != "" ]; do
 	case $1 in
         -r | --rename )          
 			RENAME=1
             ;;
-	    -o | --output-file )
+	    -c | --classify )
 	        shift
 	        CLASSIFY=1
-	        CLASSIFICATION_TYPE="$1"
+	        HIERARCHY="$1"
 	        ;;
-	    -o=* | --output-file=* )
+	    -c=* | --classify=* )
 	        CLASSIFY=1
-	        CLASSIFICATION_TYPE="${key#*=}"
+	        HIERARCHY="${key#*=}"
+	        ;;
+	    -a | --action )
+	        shift
+	        ACTION="$1"
+	        ;;
+	    -a=* | --action=* )
+	        ACTION="${key#*=}"
 	        ;;
         -v | --verbose )
 			EXIFTOOL_VERBOSE=-v
@@ -64,8 +90,12 @@ while [ "$1" != "" ]; do
     shift
 done
 
-# Initialize base values
-EXIFTOOL_BIN="/usr/bin/exiftool"
+# Some checks
+if [ ![ $ACTION =~ ^(copy|move|link)$ ] ]; 
+then
+	display_usage
+	exit 1
+fi
 
 # Execute rename command
 if [ $RENAME == 1 ]
