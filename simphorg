@@ -23,7 +23,7 @@ display_usage() {
 	echo -e "-h  --help                  Display this help and exit."
 	echo -e "\n" 
 	echo -e "HIERARCHY" 
-	echo -e "Hrearchy of classification. Possible to specifiy several levels, comma separated."
+	echo -e "Hrearchy of classification. Possible to specifiy several levels, slash (/) separated."
 	echo -e "Ex: year,month => create directories for each years, and then inside a directory for each months."
 	echo -e "    year: create a directory for each years of media."
 	echo -e "    month: create a directory for each months of media." 
@@ -96,14 +96,29 @@ while [ "$1" != "" ]; do
             ;;
         * )            
 			SOURCE=${1%/}
+    		shift
+			TARGET=${1%/}
 			;;
 	esac
     shift
 done
 
+if [[ "$TARGET" == "" ]];
+then
+	TARGET=$SOURCE
+fi
+
+debug "RENAME = $RENAME"
+debug "CLASSIFY = $CLASSIFY"
+debug "HIERARCHY = $HIERARCHY"
+debug "ACTION = $ACTION"
+debug "EXIFTOOL_VERBOSE = $EXIFTOOL_VERBOSE"
+debug "RECURSIVE = $RECURSIVE"
+debug "SOURCE = $SOURCE"
+debug "TARGET = $TARGET"
+
 # Some checks
 re="^(copy|move|link)$"
-debug "ACTION=$ACTION"
 if [[ ! $ACTION =~ $re ]]; 
 then
 	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
@@ -136,6 +151,8 @@ then
 				hour=${BASH_REMATCH[4]} && debug "hour = $hour"
 				minute=${BASH_REMATCH[5]} && debug "minute = $minute"
 				second=${BASH_REMATCH[6]} && debug "second = $second"
+
+				target_file="$TARGET"
 			else
 				debug "filename '$filename' not match regex '$re'"
 			fi
