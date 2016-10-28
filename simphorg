@@ -12,14 +12,15 @@
 
 display_usage() { 
 	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera. \n" 
-	echo -e "Usage:\n$0 -h -R -r [file or directory] [destination]\n" 
+	echo -e "Usage:\n$0 -h -R -r -c <HIERARCHY> -a <ACTION> [source] [target]\n" 
 	echo -e "Arguments:" 
 	echo -e "-r  --rename                Rename files with the date taken using format yyMMdd_hhmmss." 
 	echo -e "-R  --recursive             Execute action(s) recursively."
 	echo -e "-c  --classify=HIERARCHY    Classify the images according the specified TYPE."
 	echo -e "-a  --action=ACTION         Action type. Could be 'copy', 'move' or 'link'."
-	echo -e "-v  --verbose               Verbose."
-	echo -e "-h  --help                  Show usage."
+	echo -e "-v  --verbose               Display details while executing actions."
+	echo -e "-d  --debug                 Display more details while executing actions."
+	echo -e "-h  --help                  Display this help and exit."
 	echo -e "\n" 
 	echo -e "HIERARCHY" 
 	echo -e "Hrearchy of classification. Possible to specifiy several levels, comma separated."
@@ -37,8 +38,15 @@ display_usage() {
 	echo -e "    link: create a symbolic link of media in the new classification structure." 
 } 
 
+debug() {
+	if [[ $DEBUG == 1 ]]; 
+	then 
+		echo "[DEBUG] $1" 
+	fi	
+}
+
 # if less than two arguments supplied, display usage 
-if [  $# -le 1 ] 
+if [[  $# -le 1 ]];
 then 
 	display_usage
 	exit 1
@@ -80,30 +88,57 @@ while [ "$1" != "" ]; do
         -v | --verbose )
 			EXIFTOOL_VERBOSE=-v
 			;;
+        -d | --debug )
+			DEBUG=1
+			;;
         -R | --recursive )           
 			RECURSIVE="-r"
             ;;
         * )            
-			PATH=$1
+			SOURCE=${1%/}
 			;;
 	esac
     shift
 done
 
 # Some checks
-if [ ![ $ACTION =~ ^(copy|move|link)$ ] ]; 
+re="^(copy|move|link)$"
+debug "ACTION=$ACTION"
+if [[ ! $ACTION =~ $re ]]; 
 then
+	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
 	display_usage
 	exit 1
 fi
 
 # Execute rename command
-if [ $RENAME == 1 ]
+if [[ $RENAME == 1 ]];
 then
-	$EXIFTOOL_BIN '-filename<CreateDate' -d %y%m%d_%H%M%S%%-c.%%le $RECURSIVE $EXIFTOOL_VERBOSE $PATH
+	$EXIFTOOL_BIN '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $EXIFTOOL_VERBOSE $SOURCE
 fi
 
-if [ $CLASSIFY == 1 ]
+# Execute classify command
+if [[ $CLASSIFY == 1 ]];
 then
-	
+	for f in $SOURCE/* $SOURCE/**/* ; do
+		if [[ -f $f ]];
+		then
+			filename=$(basename "$f")
+			filename=${filename%.*}
+			debug "filename=$filename"
+
+			re="^([12][0-9]{3})([01][0-9])([0-3][0-9])_([0-2][0-9])([0-5][0-9])([0-5][0-9])$"
+			if [[ $filename =~ $re ]];
+			then
+				year=${BASH_REMATCH[1]} && debug "year = $year"
+				month=${BASH_REMATCH[2]} && debug "month = $month"
+				day=${BASH_REMATCH[3]} && debug "day = $day"
+				hour=${BASH_REMATCH[4]} && debug "hour = $hour"
+				minute=${BASH_REMATCH[5]} && debug "minute = $minute"
+				second=${BASH_REMATCH[6]} && debug "second = $second"
+			else
+				debug "filename '$filename' not match regex '$re'"
+			fi
+		fi
+	done;
 fi
