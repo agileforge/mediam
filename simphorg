@@ -64,44 +64,56 @@ EXIFTOOL_BIN="/usr/bin/exiftool"
 ACTION="copy"
 
 # Parse parameters
-while [ "$1" != "" ]; do
-	case $1 in
+OPTS=$( getopt -o rc:a:vdR -l rename,classify:,action:,verbose,debug,recursive -- "$@" )
+
+if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+
+echo "$OPTS"
+eval set -- "$OPTS"
+
+while true; do
+	case "$1" in
         -r | --rename )          
+			shift
 			RENAME=1
             ;;
 	    -c | --classify )
-	        shift
+			shift
 	        CLASSIFY=1
-	        HIERARCHY="$1"
-	        ;;
-	    -c=* | --classify=* )
-	        CLASSIFY=1
-	        HIERARCHY="${key#*=}"
+	        HIERARCHY=${1%/}
+			shift
 	        ;;
 	    -a | --action )
-	        shift
+			shift
 	        ACTION="$1"
-	        ;;
-	    -a=* | --action=* )
-	        ACTION="${key#*=}"
+			shift
 	        ;;
         -v | --verbose )
+			shift
 			EXIFTOOL_VERBOSE=-v
 			;;
         -d | --debug )
+			shift
 			DEBUG=1
 			;;
         -R | --recursive )           
+			shift
 			RECURSIVE="-r"
             ;;
-        * )            
-			SOURCE=${1%/}
-    		shift
-			TARGET=${1%/}
+		-- ) 
+			shift
+			break 
 			;;
+		* )
+			shift
+			break
 	esac
-    shift
 done
+
+shift $(($OPTIND - 1))
+SOURCE=${1%/}
+TARGET=${2%/}
+
 
 if [[ "$TARGET" == "" ]];
 then
@@ -122,6 +134,15 @@ re="^(copy|move|link)$"
 if [[ ! $ACTION =~ $re ]]; 
 then
 	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
+	display_usage
+	exit 1
+fi
+
+re="^((year|month|day|hour|minute|second)/{0,1})+$"
+if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; 
+then
+	debug "'$HIERARCHY' not match to $re"
+	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
 	display_usage
 	exit 1
 fi
