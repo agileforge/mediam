@@ -39,36 +39,44 @@ display_usage() {
 } 
 
 debug() {
-	if [[ $DEBUG == 1 ]]; 
-	then 
+	if [[ $DEBUG == 1 ]]; then 
 		echo "[DEBUG] $1" 
 	fi	
 }
 
-# if less than two arguments supplied, display usage 
-if [[  $# -le 1 ]];
-then 
-	display_usage
-	exit 1
-fi 
- 
-# check whether user had supplied -h or --help . If yes display usage 
-if [[ ( $# == "--help") ||  $# == "-h" ]] 
-then 
-	display_usage
-	exit 0
-fi 
+action() {
+	case "$1" in
+		copy )
+			cp -u -f "$2" "$3"
+			debug "Copy '$2' to '$3'"
+			;;
+		move )
+			mv -f "$2" "$3"
+			debug "Move '$2' to '$3'"
+			;;
+		link )
+			cp -u -f -s "$2" "$3"
+			debug "Link '$2' to '$3'"
+			;;
+	esac
+}
 
 # Initialize base and default values
 EXIFTOOL_BIN="/usr/bin/exiftool"
 ACTION="copy"
 
 # Parse parameters
-OPTS=$( getopt -o rc:a:vdR -l rename,classify:,action:,verbose,debug,recursive -- "$@" )
+OPTS=$( getopt -o rc:a:vdRh -l rename,classify:,action:,verbose,debug,recursive,help -- "$@" )
+if [ $? != 0 ] ; then 
+	echo "Failed parsing options." >&2 
+	exit 1 
+fi
 
-if [ $? != 0 ] ; then echo "Failed parsing options." >&2 ; exit 1 ; fi
+if [[ "$OPTS" == " --" ]]; then
+	display_usage
+	exit 1
+fi
 
-echo "$OPTS"
 eval set -- "$OPTS"
 
 while true; do
@@ -90,7 +98,7 @@ while true; do
 	        ;;
         -v | --verbose )
 			shift
-			EXIFTOOL_VERBOSE=-v
+			VERBOSE=-v
 			;;
         -d | --debug )
 			shift
@@ -100,6 +108,11 @@ while true; do
 			shift
 			RECURSIVE="-r"
             ;;
+        -h | --help )
+			shift
+			display_usage
+			break
+			;;
 		-- ) 
 			shift
 			break 
@@ -109,14 +122,15 @@ while true; do
 			break
 	esac
 done
-
 shift $(($OPTIND - 1))
 SOURCE=${1%/}
 TARGET=${2%/}
 
+if [[ "$SOURCE" == "" ]]; then
+	SOURCE=$(pwd)
+fi
 
-if [[ "$TARGET" == "" ]];
-then
+if [[ "$TARGET" == "" ]]; then
 	TARGET=$SOURCE
 fi
 
@@ -131,41 +145,45 @@ debug "TARGET = $TARGET"
 
 # Some checks
 re="^(copy|move|link)$"
-if [[ ! $ACTION =~ $re ]]; 
-then
+if [[ ! $ACTION =~ $re ]]; then
 	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
 	display_usage
 	exit 1
 fi
 
 re="^((year|month|day|hour|minute|second)/{0,1})+$"
-if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; 
-then
+if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
 	debug "'$HIERARCHY' not match to $re"
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
 	display_usage
 	exit 1
 fi
 
+if [[ ! -f $SOURCE ]]; then
+	if [[ ! -d $SOURCE ]]; then
+		echo "Source file or directory doesn't exists"
+		exit 2
+	fi
+fi
+
 # Execute rename command
-if [[ $RENAME == 1 ]];
-then
-	$EXIFTOOL_BIN '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $EXIFTOOL_VERBOSE $SOURCE
+if [[ $RENAME == 1 ]]; then
+	$EXIFTOOL_BIN '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $VERBOSE $SOURCE
 fi
 
 # Execute classify command
-if [[ $CLASSIFY == 1 ]];
-then
+if [[ $CLASSIFY == 1 ]]; then
+	debug "Launch cassification witn '$HIERARCHY'."
 	for f in $SOURCE/* $SOURCE/**/* ; do
-		if [[ -f $f ]];
-		then
-			filename=$(basename "$f")
-			filename=${filename%.*}
+		if [[ -f $f ]];	then
+			debug "$f"
+			filenameWithExt=$(basename "$f")
+			filename=${filenameWithExt%.*}
+			debug "filenameWithExt=$filenameWithExt"
 			debug "filename=$filename"
 
 			re="^([12][0-9]{3})([01][0-9])([0-3][0-9])_([0-2][0-9])([0-5][0-9])([0-5][0-9])$"
-			if [[ $filename =~ $re ]];
-			then
+			if [[ $filename =~ $re ]]; then
 				year=${BASH_REMATCH[1]} && debug "year = $year"
 				month=${BASH_REMATCH[2]} && debug "month = $month"
 				day=${BASH_REMATCH[3]} && debug "day = $day"
@@ -173,7 +191,21 @@ then
 				minute=${BASH_REMATCH[5]} && debug "minute = $minute"
 				second=${BASH_REMATCH[6]} && debug "second = $second"
 
-				target_file="$TARGET"
+				newpath=${HIERARCHY/year/$year}
+				newpath=${newpath/month/$month}
+				newpath=${newpath/day/$day}
+				newpath=${newpath/hour/$hour}
+				newpath=${newpath/minute/$minute}
+				newpath=${newpath/second/$second}
+				newpath="$TARGET/$newpath"
+				debug "newpath = $newpath"
+
+				mkdir -p "$newpath"
+
+				target_file="$newpath/$filenameWithExt"
+				debug "target_file=$target_file"
+
+				action $ACTION $f $target_file
 			else
 				debug "filename '$filename' not match regex '$re'"
 			fi
