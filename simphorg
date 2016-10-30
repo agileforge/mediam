@@ -34,6 +34,8 @@ display_usage() {
 	echo -e "    day: create a directory for each days of media." 
 	echo -e "    media: create a directory for each type of media (image or video)" 
 	echo -e "    country: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF." 
+	echo -e "    state: create a directory for each state of country. Try to get it from google services according GPS coordinate in EXIF." 
+	echo -e "    city: create a directory for each state of city. Try to get it from google services according GPS coordinate in EXIF." 
 	echo -e "\n" 
 	echo -e "ACTION" 
 	echo -e "Action to do while classifying. Default is 'copy'."
@@ -49,20 +51,18 @@ debug() {
 }
 
 action() {
-	local s=${2/ /\ }
-	local t=${3/ /\ }
 	case "$1" in
 		copy )
-			cp -u -f "${s}" "${t}"
-			debug "Copy '$s' to '$t'"
+			cp -u -f "$2" "$3"
+			debug "Copy '$2' to '$3'"
 			;;
 		move )
-			mv -f "${s}" "${t}"
-			debug "Move '$s' to '$t'"
+			mv -f "$2" "$3"
+			debug "Move '$2' to '$3'"
 			;;
 		link )
-			cp -u -f -s "${s}" "${t}"
-			debug "Link '$s' to '$t'"
+			cp -u -f -s "$2" "$3"
+			debug "Link '$2' to '$3'"
 			;;
 	esac
 }
@@ -156,7 +156,7 @@ if [[ ! $ACTION =~ $re ]]; then
 	exit 1
 fi
 
-re="^((year|month|day|hour|minute|second|country)/{0,1})+$"
+re="^((year|month|day|hour|minute|second|country|state|city)/{0,1})+$"
 if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
 	debug "'$HIERARCHY' not match to $re"
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
@@ -205,7 +205,9 @@ if [[ $CLASSIFY == 1 ]]; then
 
 				# Make geo informations
 				country=""
-				re="^.*(country).*$"
+				state=""
+				city=""
+				re="^.*(country|state|city).*$"
 				if [[ $HIERARCHY =~ $re ]]; then
 					debug "Search for coordinates."
 					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' $f)
@@ -215,12 +217,20 @@ if [[ $CLASSIFY == 1 ]]; then
 						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
 						debug "finalUrl=$finalUrl"
 						json=$(curl -s $finalUrl)
-						#debug "json=$json"
+						debug "json=$json"
 						country=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["country","political"]) ) .long_name')
 						debug "country = $country"
+						state=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["administrative_area_level_1","political"]) ) .long_name')
+						debug "state = $state"
+						city=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["locality","political"]) ) .long_name')
+						debug "city = $city"
 					fi
 					if [[ "$country" == "" ]]; then country="Unknown country"; fi
+					if [[ "$state" == "" ]]; then state="Unknown state"; fi
+					if [[ "$city" == "" ]]; then city="Unknown city"; fi
 					newpath=${newpath/country/$country}
+					newpath=${newpath/state/$state}
+					newpath=${newpath/city/$city}
 				fi
 
 				newpath="$TARGET/$newpath"
@@ -231,7 +241,7 @@ if [[ $CLASSIFY == 1 ]]; then
 				target_file="$newpath/$filenameWithExt"
 				debug "target_file=$target_file"
 
-				action $ACTION $f $target_file
+				action $ACTION "$f" "$target_file"
 			else
 				debug "filename '$filename' not match regex '$re'"
 			fi
