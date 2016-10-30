@@ -5,6 +5,10 @@
 #
 # Script bash to allow to rename and classify multimedia files.
 #
+# Rquires: 
+# * exiftool             http://www.sno.phy.queensu.ca/~phil/exiftool/
+# * jq                   https://stedolan.github.io/jq/
+#
 # *************************************************************************************************
 # License: GPL
 # Author: Pascal Fluck (PFComputing)
@@ -45,25 +49,27 @@ debug() {
 }
 
 action() {
+	local s=${2/ /\ }
+	local t=${3/ /\ }
 	case "$1" in
 		copy )
-			cp -u -f "$2" "$3"
-			debug "Copy '$2' to '$3'"
+			cp -u -f "${s}" "${t}"
+			debug "Copy '$s' to '$t'"
 			;;
 		move )
-			mv -f "$2" "$3"
-			debug "Move '$2' to '$3'"
+			mv -f "${s}" "${t}"
+			debug "Move '$s' to '$t'"
 			;;
 		link )
-			cp -u -f -s "$2" "$3"
-			debug "Link '$2' to '$3'"
+			cp -u -f -s "${s}" "${t}"
+			debug "Link '$s' to '$t'"
 			;;
 	esac
 }
 
 # Initialize base and default values
-EXIFTOOL_BIN="/usr/bin/exiftool"
 ACTION="copy"
+GEO_API_URL="http://maps.googleapis.com/maps/api/geocode/json?latlng=__coordinates__&sensor=false"
 
 # Parse parameters
 OPTS=$( getopt -o rc:a:vdRh -l rename,classify:,action:,verbose,debug,recursive,help -- "$@" )
@@ -138,7 +144,6 @@ debug "RENAME = $RENAME"
 debug "CLASSIFY = $CLASSIFY"
 debug "HIERARCHY = $HIERARCHY"
 debug "ACTION = $ACTION"
-debug "EXIFTOOL_VERBOSE = $EXIFTOOL_VERBOSE"
 debug "RECURSIVE = $RECURSIVE"
 debug "SOURCE = $SOURCE"
 debug "TARGET = $TARGET"
@@ -151,7 +156,7 @@ if [[ ! $ACTION =~ $re ]]; then
 	exit 1
 fi
 
-re="^((year|month|day|hour|minute|second)/{0,1})+$"
+re="^((year|month|day|hour|minute|second|country)/{0,1})+$"
 if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
 	debug "'$HIERARCHY' not match to $re"
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
@@ -168,7 +173,7 @@ fi
 
 # Execute rename command
 if [[ $RENAME == 1 ]]; then
-	$EXIFTOOL_BIN '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $VERBOSE $SOURCE
+	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $VERBOSE $SOURCE
 fi
 
 # Execute classify command
@@ -197,6 +202,27 @@ if [[ $CLASSIFY == 1 ]]; then
 				newpath=${newpath/hour/$hour}
 				newpath=${newpath/minute/$minute}
 				newpath=${newpath/second/$second}
+
+				# Make geo informations
+				country=""
+				re="^.*(country).*$"
+				if [[ $HIERARCHY =~ $re ]]; then
+					debug "Search for coordinates."
+					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' $f)
+					debug "coordinates = $coordinates"
+					if [[ "$coordinates" != "" ]]; then
+						debug "Reverce coordinates using google."
+						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
+						debug "finalUrl=$finalUrl"
+						json=$(curl -s $finalUrl)
+						#debug "json=$json"
+						country=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["country","political"]) ) .long_name')
+						debug "country = $country"
+					fi
+					if [[ "$country" == "" ]]; then country="Unknown country"; fi
+					newpath=${newpath/country/$country}
+				fi
+
 				newpath="$TARGET/$newpath"
 				debug "newpath = $newpath"
 
