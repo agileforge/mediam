@@ -116,6 +116,8 @@ while true; do
         -d | --debug )
 			shift
 			DEBUG=true
+			VERBOSE=true
+			VERBOSE_OPT=-v
 			;;
         -R | --recursive )           
 			shift
@@ -176,12 +178,13 @@ fi
 
 # Execute rename command
 if [[ $RENAME ]]; then
-	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
+	verbose "Renaming medias to date time format..."
+	exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
 fi
 
 # Execute classify command
 if [[ $CLASSIFY ]]; then
-	debug "Launch cassification witn '$HIERARCHY'."
+	verbose "Launch cassification witn '$HIERARCHY'."
 	if [[ $RECURSIVE ]]; then MAXDEPTH=999; else MAXDEPTH=1; fi
 	debug "MAXDEPTH = $MAXDEPTH"
 	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
@@ -216,9 +219,10 @@ if [[ $CLASSIFY ]]; then
 				re="^.*(country|state|city).*$"
 				if [[ $HIERARCHY =~ $re ]]; then
 					debug "Search for coordinates."
-					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' "$f")
+					coordinates=$(exiftool -m -n -p '$GPSLatitude,$GPSLongitude' "$f")
 					debug "coordinates = $coordinates"
-					if [[ "$coordinates" != "" ]]; then
+					re="^[0-9]+\.[0-9]+,[0-9]+\.[0-9]+$"
+					if [[ $coordinates = $re ]]; then
 						debug "Reverse coordinates using google."
 						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
 						debug "finalUrl=$finalUrl"
