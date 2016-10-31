@@ -137,11 +137,11 @@ while true; do
 	esac
 done
 shift $(($OPTIND - 1))
-SOURCE=${1%/}
-TARGET=${2%/}
+SOURCE="${1%/}"
+TARGET="${2%/}"
 
-if [[ "$SOURCE" == "" ]]; then SOURCE=$(pwd); fi
-if [[ "$TARGET" == "" ]]; then TARGET=$SOURCE; fi
+if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
+if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
 
 debug "RENAME = $RENAME"
 debug "CLASSIFY = $CLASSIFY"
@@ -167,8 +167,8 @@ if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
 	exit 1
 fi
 
-if [[ ! -f $SOURCE ]]; then
-	if [[ ! -d $SOURCE ]]; then
+if [[ ! -f "$SOURCE" ]]; then
+	if [[ ! -d "$SOURCE" ]]; then
 		echo "Source file or directory doesn't exists"
 		exit 2
 	fi
@@ -176,7 +176,7 @@ fi
 
 # Execute rename command
 if [[ $RENAME ]]; then
-	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT $SOURCE
+	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
 fi
 
 # Execute classify command
@@ -184,7 +184,7 @@ if [[ $CLASSIFY ]]; then
 	debug "Launch cassification witn '$HIERARCHY'."
 	if [[ $RECURSIVE ]]; then MAXDEPTH=999; else MAXDEPTH=1; fi
 	debug "MAXDEPTH = $MAXDEPTH"
-	find $SOURCE -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
+	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
 		debug "$f"
 		if [[ -f $f ]];	then
 			debug "$f"
@@ -216,7 +216,7 @@ if [[ $CLASSIFY ]]; then
 				re="^.*(country|state|city).*$"
 				if [[ $HIERARCHY =~ $re ]]; then
 					debug "Search for coordinates."
-					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' $f)
+					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' "$f")
 					debug "coordinates = $coordinates"
 					if [[ "$coordinates" != "" ]]; then
 						debug "Reverse coordinates using google."
