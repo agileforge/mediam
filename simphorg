@@ -222,7 +222,7 @@ if [[ $CLASSIFY ]]; then
 					coordinates=$(exiftool -m -n -p '$GPSLatitude,$GPSLongitude' "$f")
 					debug "coordinates = $coordinates"
 					re="^[0-9]+\.[0-9]+,[0-9]+\.[0-9]+$"
-					if [[ $coordinates = $re ]]; then
+					if [[ $coordinates =~ $re ]]; then
 						debug "Reverse coordinates using google."
 						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
 						debug "finalUrl=$finalUrl"
