@@ -45,8 +45,14 @@ display_usage() {
 } 
 
 debug() {
-	if [[ $DEBUG == 1 ]]; then 
+	if [[ $DEBUG ]]; then 
 		echo "[DEBUG] $1" 
+	fi	
+}
+
+verbose() {
+	if [[ $VERBOSE ]]; then 
+		echo "$1" 
 	fi	
 }
 
@@ -54,15 +60,15 @@ action() {
 	case "$1" in
 		copy )
 			cp -u -f "$2" "$3"
-			debug "Copy '$2' to '$3'"
+			verbose "Copy '$2' to '$3'"
 			;;
 		move )
 			mv -f "$2" "$3"
-			debug "Move '$2' to '$3'"
+			verbose "Move '$2' to '$3'"
 			;;
 		link )
 			cp -u -f -s "$2" "$3"
-			debug "Link '$2' to '$3'"
+			verbose "Link '$2' to '$3'"
 			;;
 	esac
 }
@@ -89,11 +95,11 @@ while true; do
 	case "$1" in
         -r | --rename )          
 			shift
-			RENAME=1
+			RENAME=true
             ;;
 	    -c | --classify )
 			shift
-	        CLASSIFY=1
+	        CLASSIFY=true
 	        HIERARCHY=${1%/}
 			shift
 	        ;;
@@ -104,15 +110,17 @@ while true; do
 	        ;;
         -v | --verbose )
 			shift
-			VERBOSE=-v
+			VERBOSE=true
+			VERBOSE_OPT=-v
 			;;
         -d | --debug )
 			shift
-			DEBUG=1
+			DEBUG=true
 			;;
         -R | --recursive )           
 			shift
-			RECURSIVE="-r"
+			RECURSIVE=true
+			RECURSIVE_OPT=-r
             ;;
         -h | --help )
 			shift
@@ -132,13 +140,8 @@ shift $(($OPTIND - 1))
 SOURCE=${1%/}
 TARGET=${2%/}
 
-if [[ "$SOURCE" == "" ]]; then
-	SOURCE=$(pwd)
-fi
-
-if [[ "$TARGET" == "" ]]; then
-	TARGET=$SOURCE
-fi
+if [[ "$SOURCE" == "" ]]; then SOURCE=$(pwd); fi
+if [[ "$TARGET" == "" ]]; then TARGET=$SOURCE; fi
 
 debug "RENAME = $RENAME"
 debug "CLASSIFY = $CLASSIFY"
@@ -172,14 +175,17 @@ if [[ ! -f $SOURCE ]]; then
 fi
 
 # Execute rename command
-if [[ $RENAME == 1 ]]; then
-	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE $VERBOSE $SOURCE
+if [[ $RENAME ]]; then
+	exiftool '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT $SOURCE
 fi
 
 # Execute classify command
-if [[ $CLASSIFY == 1 ]]; then
+if [[ $CLASSIFY ]]; then
 	debug "Launch cassification witn '$HIERARCHY'."
-	for f in $SOURCE/* $SOURCE/**/* ; do
+	if [[ $RECURSIVE ]]; then MAXDEPTH=999; else MAXDEPTH=1; fi
+	debug "MAXDEPTH = $MAXDEPTH"
+	find $SOURCE -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
+		debug "$f"
 		if [[ -f $f ]];	then
 			debug "$f"
 			filenameWithExt=$(basename "$f")
@@ -213,7 +219,7 @@ if [[ $CLASSIFY == 1 ]]; then
 					coordinates=$(exiftool -n -p '$GPSLatitude,$GPSLongitude' $f)
 					debug "coordinates = $coordinates"
 					if [[ "$coordinates" != "" ]]; then
-						debug "Reverce coordinates using google."
+						debug "Reverse coordinates using google."
 						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
 						debug "finalUrl=$finalUrl"
 						json=$(curl -s $finalUrl)
@@ -246,5 +252,5 @@ if [[ $CLASSIFY == 1 ]]; then
 				debug "filename '$filename' not match regex '$re'"
 			fi
 		fi
-	done;
+	done
 fi
