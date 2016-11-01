@@ -45,7 +45,7 @@ Possible values are:
 > * **city**: create a directory for each city. Try to get it from google services according GPS coordinate in EXIF.
 > * **type**: create a directory for each type of media (video or image).
 
-## ACTION
+### ACTION
 Action to do while classifying. Default is 'copy'.
 > * **copy**: make a copy of media in new classification structure.
 > * **move**: move the file in new classification structure.
