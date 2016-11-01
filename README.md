@@ -1,5 +1,4 @@
 # mediam
-
 Mediam (media maid) is a tools made to help to prune, classify, purge, etc. your multi-media files like images and videos.
 
 #Usage
