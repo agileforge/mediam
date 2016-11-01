@@ -11,7 +11,7 @@ Before using mediam, check that exiftool and jq are installed on your system.
 `sudo apt-get install jq`
 
 # Usage
-mediam -h  -v -d -R -r -c <HIERARCHY> -a <ACTION> [source] [target]
+mediam -h  -v -d -R -r -c HIERARCHY -a ACTION [source] [target]
 
 ## Arguments:
 
