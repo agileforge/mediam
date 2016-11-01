@@ -27,8 +27,12 @@ display_usage() {
 	echo -e "-h  --help                  Display this help and exit."
 	echo -e "\n" 
 	echo -e "HIERARCHY" 
-	echo -e "Hrearchy of classification. Possible to specifiy several levels, slash (/) separated."
-	echo -e "Ex: year,month => create directories for each years, and then inside a directory for each months."
+	echo -e "Hrearchy of classification. Possible to specifiy several formats or levels."
+	echo -e "If separated by slash (/) then generate folders."
+	echo -e "Ex: year-month/type => create directories for each years-month, and then inside a directory for each type."
+	echo -e "    > 2010-12/image"
+	echo -e "    > 2011-01/video"
+	echo -e "Possible values are:"
 	echo -e "    year: create a directory for each years of media."
 	echo -e "    month: create a directory for each months of media." 
 	echo -e "    day: create a directory for each days of media." 
@@ -162,7 +166,7 @@ if [[ ! $ACTION =~ $re ]]; then
 	exit 1
 fi
 
-re="^((year|month|day|hour|minute|second|country|state|city|type)/{0,1})+$"
+re="^((year|month|day|hour|minute|second|country|state|city|type).*)+$"
 if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
 	debug "'$HIERARCHY' not match to $re"
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
@@ -258,6 +262,7 @@ if [[ $CLASSIFY ]]; then
 					newpath=${newpath/type/$mediaType}
 				fi
 
+				# Finally do the action
 				newpath="$TARGET/$newpath"
 				debug "newpath = $newpath"
 
