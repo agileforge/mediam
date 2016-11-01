@@ -31,7 +31,8 @@ mediam -h  -v -d -R -r -c <HIERARCHY> -a <ACTION> [source] [target]
 
 ### HIERARCHY
 Hrearchy of classification. Possible to specifiy several formats or levels. If separated by slash (/) then generate folders.
-Ex: year-month/type => create directories for each years-month, and then inside a directory for each type.
+
+Ex: **year-month/type** => create directories for each years-month, and then inside a directory for each type.
 > * 2010-12/image
 > * 2011-01/video
 
