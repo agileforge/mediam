@@ -11,10 +11,10 @@
 display_classify_usage() { 
 	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera.\n" 
 	echo -e "Usage:" 
-	echo -e "$0 classify -R -c <HIERARCHY> -a <ACTION> -v -d -h [source] [target]\n" 
+	echo -e "$0 classify -R -H <HIERARCHY> -a <ACTION> -v -d -h [source] [target]\n" 
 	echo -e "Arguments:" 
 	echo -e "-R  --recursive                   Execute action(s) recursively."
-	echo -e "-c  --classify=HIERARCHY          Classify the images according the specified TYPE."
+	echo -e "-H  --hierarchy=HIERARCHY         Classify the images according the specified HIERARCHY."
 	echo -e "-a  --action=ACTION               Action type. Could be 'copy', 'move' or 'link'."
 	echo -e "-v  --verbose                     Display details while executing actions."
 	echo -e "-d  --debug                       Display more details while executing actions."
@@ -50,14 +50,14 @@ ACTION="copy"
 MAXDEPTH=1
 
 # Parse parameters
-OPTS=$( getopt -o rc:a:pvdRh -l rename,classify:,action:,prune,prune-tolerance,verbose,debug,recursive,help -- "$@" )
+OPTS=$( getopt -o a:H:vdRh -l action:,hierarchy:,verbose,debug,recursive,help -- $BASE_OPTS )
 if [ $? != 0 ] ; then 
 	echo "Failed parsing options." >&2 
 	exit 1 
 fi
 
-if [[ "$OPTS" == " --" ]]; then
-	display_usage
+if [[ "$OPTS" == " -- 'classify'" ]]; then
+	display_classify_usage
 	exit 1
 fi
 
@@ -65,13 +65,8 @@ eval set -- "$OPTS"
 
 while true; do
 	case "$1" in
-        -r | --rename )          
+	    -H | --hierarchy )
 			shift
-			RENAME=true
-            ;;
-	    -c | --classify )
-			shift
-	        CLASSIFY=true
 	        HIERARCHY=${1%/}
 			shift
 	        ;;
@@ -80,35 +75,14 @@ while true; do
 	        ACTION="$1"
 			shift
 	        ;;
-	    -p | --prune )
-			shift
-	        PRUNE=true
-	        ;;
-  	    --prune-tolerance )
-			shift
-	        PRUNE_TOLERANCE=$1
-			shift
-	        ;;
-        -v | --verbose )
-			shift
-			VERBOSE=true
-			VERBOSE_OPT=-v
-			;;
-        -d | --debug )
-			shift
-			DEBUG=true
-			VERBOSE=true
-			VERBOSE_OPT=-v
-			;;
         -R | --recursive )           
 			shift
 			RECURSIVE=true
 			RECURSIVE_OPT=-r
 			MAXDEPTH=999
             ;;
-        -h | --help )
-			shift
-			display_usage
+		-h | --help )
+			display_classify_usage
 			break
 			;;
 		-- ) 
@@ -117,107 +91,108 @@ while true; do
 			;;
 		* )
 			shift
-			break
+			;;
 	esac
 done
+
+debug "ACTION = $ACTION"
+debug "HIERARCHY = $HIERARCHY"
 
 # Some checks
 re="^(copy|move|link)$"
 if [[ ! $ACTION =~ $re ]]; then
 	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
-	display_usage
+	display_classify_usage
 	exit 1
 fi
 
 re="^((year|month|day|hour|minute|second|country|state|city|type).*)+$"
-if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
+if [[ ! $HIERARCHY =~ $re ]]; then
 	debug "'$HIERARCHY' not match to $re"
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
-	display_usage
+	display_classify_usage
 	exit 1
 fi
 
 # Execute classify command
-if [[ $CLASSIFY ]]; then
-	verbose "Launch cassification witn '$HIERARCHY'."
-	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
+verbose "Launch cassification witn '$HIERARCHY'."
+find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
+	debug "$f"
+	if [[ -f $f ]];	then
 		debug "$f"
-		if [[ -f $f ]];	then
-			debug "$f"
-			filenameWithExt=$(basename "$f")
-			filename=${filenameWithExt%.*}
-			debug "filenameWithExt=$filenameWithExt"
-			debug "filename=$filename"
+		filenameWithExt=$(basename "$f")
+		filename=${filenameWithExt%.*}
+		debug "filenameWithExt=$filenameWithExt"
+		debug "filename=$filename"
 
-			re="^([12][0-9]{3})([01][0-9])([0-3][0-9])_([0-2][0-9])([0-5][0-9])([0-5][0-9])$"
-			if [[ $filename =~ $re ]]; then
-				year=${BASH_REMATCH[1]} && debug "year = $year"
-				month=${BASH_REMATCH[2]} && debug "month = $month"
-				day=${BASH_REMATCH[3]} && debug "day = $day"
-				hour=${BASH_REMATCH[4]} && debug "hour = $hour"
-				minute=${BASH_REMATCH[5]} && debug "minute = $minute"
-				second=${BASH_REMATCH[6]} && debug "second = $second"
+		re="^([12][0-9]{3})([01][0-9])([0-3][0-9])_([0-2][0-9])([0-5][0-9])([0-5][0-9])$"
+		if [[ $filename =~ $re ]]; then
+			year=${BASH_REMATCH[1]} && debug "year = $year"
+			month=${BASH_REMATCH[2]} && debug "month = $month"
+			day=${BASH_REMATCH[3]} && debug "day = $day"
+			hour=${BASH_REMATCH[4]} && debug "hour = $hour"
+			minute=${BASH_REMATCH[5]} && debug "minute = $minute"
+			second=${BASH_REMATCH[6]} && debug "second = $second"
 
-				newpath=${HIERARCHY/year/$year}
-				newpath=${newpath/month/$month}
-				newpath=${newpath/day/$day}
-				newpath=${newpath/hour/$hour}
-				newpath=${newpath/minute/$minute}
-				newpath=${newpath/second/$second}
+			newpath=${HIERARCHY/year/$year}
+			newpath=${newpath/month/$month}
+			newpath=${newpath/day/$day}
+			newpath=${newpath/hour/$hour}
+			newpath=${newpath/minute/$minute}
+			newpath=${newpath/second/$second}
 
-				# Make geo informations
-				country=""
-				state=""
-				city=""
-				re="^.*(country|state|city).*$"
-				if [[ $HIERARCHY =~ $re ]]; then
-					debug "Search for coordinates."
-					coordinates=$(exiftool -m -n -p '$GPSLatitude,$GPSLongitude' "$f")
-					debug "coordinates = $coordinates"
-					re="^[0-9]+\.[0-9]+,[0-9]+\.[0-9]+$"
-					if [[ $coordinates =~ $re ]]; then
-						debug "Reverse coordinates using google."
-						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
-						debug "finalUrl=$finalUrl"
-						json=$(curl -s $finalUrl)
-						debug "json=$json"
-						country=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["country","political"]) ) .long_name')
-						debug "country = $country"
-						state=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["administrative_area_level_1","political"]) ) .long_name')
-						debug "state = $state"
-						city=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["locality","political"]) ) .long_name')
-						debug "city = $city"
-					fi
-					if [[ "$country" == "" ]]; then country="Unknown country"; fi
-					if [[ "$state" == "" ]]; then state="Unknown state"; fi
-					if [[ "$city" == "" ]]; then city="Unknown city"; fi
-					newpath=${newpath/country/$country}
-					newpath=${newpath/state/$state}
-					newpath=${newpath/city/$city}
+			# Make geo informations
+			country=""
+			state=""
+			city=""
+			re="^.*(country|state|city).*$"
+			if [[ $HIERARCHY =~ $re ]]; then
+				debug "Search for coordinates."
+				coordinates=$(exiftool -m -n -p '$GPSLatitude,$GPSLongitude' "$f")
+				debug "coordinates = $coordinates"
+				re="^[0-9]+\.[0-9]+,[0-9]+\.[0-9]+$"
+				if [[ $coordinates =~ $re ]]; then
+					debug "Reverse coordinates using google."
+					finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
+					debug "finalUrl=$finalUrl"
+					json=$(curl -s $finalUrl)
+					debug "json=$json"
+					country=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["country","political"]) ) .long_name')
+					debug "country = $country"
+					state=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["administrative_area_level_1","political"]) ) .long_name')
+					debug "state = $state"
+					city=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["locality","political"]) ) .long_name')
+					debug "city = $city"
 				fi
-
-				# Make file type
-				re="^.*(type).*$"
-				if [[ $HIERARCHY =~ $re ]]; then
-					typeof "$f"
-					mediaType=$__result__
-					if [[ "$mediaType" == "" ]]; then country="Unknown type"; fi
-					newpath=${newpath/type/$mediaType}
-				fi
-
-				# Finally do the action
-				newpath="$TARGET/$newpath"
-				debug "newpath = $newpath"
-
-				mkdir -p "$newpath"
-
-				target_file="$newpath/$filenameWithExt"
-				debug "target_file=$target_file"
-
-				action $ACTION "$f" "$target_file"
-			else
-				debug "filename '$filename' not match regex '$re'"
+				if [[ "$country" == "" ]]; then country="Unknown country"; fi
+				if [[ "$state" == "" ]]; then state="Unknown state"; fi
+				if [[ "$city" == "" ]]; then city="Unknown city"; fi
+				newpath=${newpath/country/$country}
+				newpath=${newpath/state/$state}
+				newpath=${newpath/city/$city}
 			fi
+
+			# Make file type
+			re="^.*(type).*$"
+			if [[ $HIERARCHY =~ $re ]]; then
+				typeof "$f"
+				mediaType=$__result__
+				if [[ "$mediaType" == "" ]]; then country="Unknown type"; fi
+				newpath=${newpath/type/$mediaType}
+			fi
+
+			# Finally do the action
+			newpath="$TARGET/$newpath"
+			debug "newpath = $newpath"
+
+			mkdir -p "$newpath"
+
+			target_file="$newpath/$filenameWithExt"
+			debug "target_file=$target_file"
+
+			action $ACTION "$f" "$target_file"
+		else
+			debug "filename '$filename' not match regex '$re'"
 		fi
-	done
-fi
+	fi
+done

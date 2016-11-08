@@ -38,7 +38,7 @@ if [[ ! $COMMAND =~ $re ]]; then
 fi
 
 # Parse parameters
-OPTS=$( getopt -q -o vdh -l verbose,debug,help -- "$@" )
+OPTS=$( getopt -q -o vdhRH:a: -l verbose,debug,help,hierarchy:,action: -- "$@" )
 
 if [[ "$OPTS" == " --" ]]; then
 	display_usage

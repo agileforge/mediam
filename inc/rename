@@ -68,9 +68,11 @@ if [[ ! -f "$SOURCE" ]]; then
 	fi
 fi
 
-# Execute rename command
+# Some initializations to execute
 if [[ $VEBOSE == true ]]; then
 	$VERBOSE_OPT="-v"
 fi
+
+# Execute rename command
 verbose "Renaming medias to date time format..."
 exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
