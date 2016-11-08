@@ -1,0 +1,50 @@
+#!/bin/bash
+
+# *************************************************************************************************
+# mediam (Media Maid)
+# https://github.com/crabouif/mediam
+# *************************************************************************************************
+# License: GPL 3
+# Author: Pascal Fluck (PFComputing)
+# *************************************************************************************************
+
+debug() {
+	if [[ $DEBUG ]]; then 
+		echo "[DEBUG] $1" 
+	fi	
+}
+
+verbose() {
+	if [[ $VERBOSE ]]; then 
+		echo "$1" 
+	fi	
+}
+
+action() {
+	case "$1" in
+		copy )
+			cp -u -f "$2" "$3"
+			verbose "Copy '$2' to '$3'"
+			;;
+		move )
+			mv -f "$2" "$3"
+			verbose "Move '$2' to '$3'"
+			;;
+		link )
+			cp -u -f -s "$2" "$3"
+			verbose "Link '$2' to '$3'"
+			;;
+	esac
+}
+
+typeof() {
+	debug "Search for mime type."
+	local mimetype=$(exiftool -mimetype -s -s -s "$f")
+	local mediaType=""
+	debug "mimetype = $mimetype"
+	re="^(.*)/.*$"
+	if [[ $mimetype =~ $re ]]; then
+		mediaType=${BASH_REMATCH[1]}
+	fi	
+	__result__=$mediaType
+}

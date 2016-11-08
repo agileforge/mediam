@@ -1,0 +1,76 @@
+#!/bin/bash
+
+# *************************************************************************************************
+# mediam (Media Maid)
+# https://github.com/crabouif/mediam
+# *************************************************************************************************
+# License: GPL 3
+# Author: Pascal Fluck (PFComputing)
+# *************************************************************************************************
+
+# prune usage
+display_rename_usage() { 
+	echo -e "Rename media file to a standard and sortable format %Y%m%d_%H%M%S%.\n" 
+	echo -e "Usage:" 
+	echo -e "$0 rename -R -v -d -h [source] [target]\n" 
+	echo -e "Arguments:" 
+	echo -e "-R  --recursive                   Execute rename recursively."
+	echo -e "-v  --verbose                     Display details while executing actions."
+	echo -e "-d  --debug                       Display more details while executing actions."
+	echo -e "-h  --help                        Display this help and exit."
+	echo -e "" 
+} 
+
+# Parse parameters
+OPTS=$( getopt -o vdRh -l verbose,debug,recursive,help -- $BASE_OPTS )
+if [ $? != 0 ] ; then 
+	echo "Failed parsing options." >&2 
+	exit 1 
+fi
+
+if [[ "$OPTS" == " -- 'rename'" ]]; then
+	display_rename_usage
+	exit 1
+fi
+
+eval set -- "$OPTS"
+
+while true; do
+	case "$1" in
+        -R | --recursive )           
+			shift
+			RECURSIVE_OPT=-r
+            ;;
+		-h | --help )
+			display_rename_usage
+			break
+			;;
+		-- ) 
+			shift
+			break 
+			;;
+		* )
+			shift
+			;;
+	esac
+done
+
+debug "RECURSIVE_OPT = $RECURSIVE_OPT"
+
+# Args check
+if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
+if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
+
+if [[ ! -f "$SOURCE" ]]; then
+	if [[ ! -d "$SOURCE" ]]; then
+		echo "Source file or directory doesn't exists: $SOURCE"
+		exit 2
+	fi
+fi
+
+# Execute rename command
+if [[ $VEBOSE == true ]]; then
+	$VERBOSE_OPT="-v"
+fi
+verbose "Renaming medias to date time format..."
+exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"

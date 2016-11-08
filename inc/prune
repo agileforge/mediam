@@ -1,0 +1,170 @@
+#!/bin/bash
+
+# *************************************************************************************************
+# mediam (Media Maid)
+# https://github.com/crabouif/mediam
+# *************************************************************************************************
+# License: GPL 3
+# Author: Pascal Fluck (PFComputing)
+# *************************************************************************************************
+
+# Initialization
+PRUNE_TOLERANCE=0.6
+
+# prune usage
+display_prune_usage() { 
+	echo -e "Prune multimedia images. The goal is to remove redundent images due to intensive shooting.\n" 
+	echo -e "Mediam will try to recognise similar images in order of time. Then it will gather similar images\n" 
+	echo -e "in prune folders.\n" 
+	echo -e "Then remove.\n" 
+	echo -e "Usage:" 
+	echo -e "$0 prune -R -c -t <TOLERANCE> -v -d -h [source] [prune-target]\n" 
+	echo -e "Arguments:" 
+	echo -e "-R  --recursive                   Execute action(s) recursively."
+	echo -e "-c  --commit                      Commits the prunned folders by deleting removed images."
+	echo -e "-t  --tolerance=TOLERANCE         Image comparison tolerance."
+	echo -e "-v  --verbose                     Display details while executing actions."
+	echo -e "-d  --debug                       Display more details while executing actions."
+	echo -e "-h  --help                        Display this help and exit."
+	echo -e "\n" 
+	echo -e "TOLERANCE" 
+	echo -e "Integer that specify the tolerance of image difference."
+	echo -e "If 1 the image must be exactly the same, if 0 all images accepted."
+	echo -e "Default is 0.6."
+} 
+
+# Initialization
+MAXDEPTH=1
+
+# Parse parameters
+OPTS=$( getopt -o rc:a:pvdRh -l rename,classify:,action:,prune,prune-tolerance,verbose,debug,recursive,help -- "$@" )
+if [ $? != 0 ] ; then 
+	echo "Failed parsing options." >&2 
+	exit 1 
+fi
+
+if [[ "$OPTS" == " --" ]]; then
+	display_usage
+	exit 1
+fi
+
+eval set -- "$OPTS"
+
+while true; do
+	case "$1" in
+        -r | --rename )          
+			shift
+			RENAME=true
+            ;;
+	    -c | --classify )
+			shift
+	        CLASSIFY=true
+	        HIERARCHY=${1%/}
+			shift
+	        ;;
+	    -a | --action )
+			shift
+	        ACTION="$1"
+			shift
+	        ;;
+	    -p | --prune )
+			shift
+	        PRUNE=true
+	        ;;
+  	    --prune-tolerance )
+			shift
+	        PRUNE_TOLERANCE=$1
+			shift
+	        ;;
+        -v | --verbose )
+			shift
+			VERBOSE=true
+			VERBOSE_OPT=-v
+			;;
+        -d | --debug )
+			shift
+			DEBUG=true
+			VERBOSE=true
+			VERBOSE_OPT=-v
+			;;
+        -R | --recursive )           
+			shift
+			RECURSIVE=true
+			RECURSIVE_OPT=-r
+			MAXDEPTH=999
+            ;;
+        -h | --help )
+			shift
+			display_usage
+			break
+			;;
+		-- ) 
+			shift
+			break 
+			;;
+		* )
+			shift
+			break
+	esac
+done
+shift $(($OPTIND - 1))
+SOURCE="${1%/}"
+TARGET="${2%/}"
+
+if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
+if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
+
+# Execute prune command
+if [[ $PRUNE ]]; then
+	verbose "Launch prune in $SOURCE."
+	
+	pruneCount=1
+	similarCount=0
+
+
+	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | sort -z | while IFS= read -r -d '' f; do
+		if [[ -f $f ]]; then
+			debug "$f"
+			filenameWithExt=$(basename "$f")
+
+			typeof "$f"
+			mediaType=$__result__
+			if [[ "$mediaType" == "image" ]]; then
+				if [[ -f $previousImage ]]; then
+					previousFilenameWithExt=$(basename "$previousImage")
+					debug "$f"
+					difference=$(compare -quiet -metric NCC "$previousImage" "$f" null: 2>&1)
+					re="^[0-9]\.{0,1}[0-9]*$"
+					if [[ $difference =~ $re ]]; then
+						debug "$difference >= $PRUNE_TOLERANCE"
+						isDifferent=$(echo "$difference >= $PRUNE_TOLERANCE" | bc -l)
+						if [[ $isDifferent == 1 ]]; then
+							verbose "'$previousImage' seems similar to '$f' ($difference)."
+							similarCount=$(( $similarCount + 1 ))
+							pruneDir="$TARGET/$pruneCount"
+							mkdir -p "$pruneDir"
+							if [[ ! -f "$pruneDir/$previousFilenameWithExt" ]]; then ln -s "$previousImage" "$pruneDir/$previousFilenameWithExt"; fi
+							ln -s "$f" "$pruneDir/$filenameWithExt"
+							echo "$f" >> "$pruneDir/.prune"
+							verbose "Add image '$f' to prune directory '$pruneDir'."
+						else
+							debug "'$previousImage' seems different to '$f' ($difference)."
+							
+							if [[ $stillSimilar > 0 ]]; then 
+								similarCount=$(( $similarCount + 1 ))
+								mv "$pruneDir" "$pruneDir_$similarCount"
+								pruneCount=$(( $pruneCount + 1 )); 
+								verbose "1---$stillSimilar---"; 
+							fi
+							similarCount=0
+						fi
+					else
+						debug "Compare return error '$difference'. Not a comparable value."	
+					fi
+				fi
+
+				previousImage=$f
+			fi
+		fi
+	done	
+fi

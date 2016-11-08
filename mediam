@@ -1,93 +1,44 @@
 #!/bin/bash
 
 # *************************************************************************************************
-# simphorg name comes from Simple Media Organization.
-#
-# Script bash to allow to rename and classify multimedia files.
-#
-# Rquires: 
-# * exiftool             http://www.sno.phy.queensu.ca/~phil/exiftool/
-# * jq                   https://stedolan.github.io/jq/
-#
+# mediam (Media Maid)
+# https://github.com/crabouif/mediam
 # *************************************************************************************************
-# License: GPL
+# License: GPL 3
 # Author: Pascal Fluck (PFComputing)
 # *************************************************************************************************
 
+# Save opts
+BASE_OPTS="$@"
+
+# Include common script
+. ./inc/common 
+
 display_usage() { 
 	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera. \n" 
-	echo -e "Usage:\n$0 -h -R -r -c <HIERARCHY> -a <ACTION> [source] [target]\n" 
-	echo -e "Arguments:" 
-	echo -e "-r  --rename                Rename files with the date taken using format yyMMdd_hhmmss." 
-	echo -e "-R  --recursive             Execute action(s) recursively."
-	echo -e "-c  --classify=HIERARCHY    Classify the images according the specified TYPE."
-	echo -e "-a  --action=ACTION         Action type. Could be 'copy', 'move' or 'link'."
-	echo -e "-v  --verbose               Display details while executing actions."
-	echo -e "-d  --debug                 Display more details while executing actions."
-	echo -e "-h  --help                  Display this help and exit."
-	echo -e "\n" 
-	echo -e "HIERARCHY" 
-	echo -e "Hrearchy of classification. Possible to specifiy several formats or levels."
-	echo -e "If separated by slash (/) then generate folders."
-	echo -e "Ex: year-month/type => create directories for each years-month, and then inside a directory for each type."
-	echo -e "    > 2010-12/image"
-	echo -e "    > 2011-01/video"
-	echo -e "Possible values are:"
-	echo -e "    year: create a directory for each years of media."
-	echo -e "    month: create a directory for each months of media." 
-	echo -e "    day: create a directory for each days of media." 
-	echo -e "    media: create a directory for each type of media (image or video)" 
-	echo -e "    country: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF." 
-	echo -e "    state: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF." 
-	echo -e "    city: create a directory for each city. Try to get it from google services according GPS coordinate in EXIF."
-	echo -e "    type: create a directory for each type of media (video or image)." 
-	echo -e "\n" 
-	echo -e "ACTION" 
-	echo -e "Action to do while classifying. Default is 'copy'."
-	echo -e "    copy: make a copy of media in new classification structure."
-	echo -e "    move: move the file in new classification structure." 
-	echo -e "    link: create a symbolic link of media in the new classification structure." 
+	echo -e "Usage:\n$0 <COMMAND> [options] [args]" 
+	echo -e "" 
+	echo -e "COMMAND" 
+	echo -e "These are common MediaM commands used in various situations:\n"
+	echo -e "rename      Rename media file to a standard and sortable format %Y%m%d_%H%M%S%."
+	echo -e "classify    Provide facilities to classify multimedia files as pictures or video taken by a camera."
+	echo -e "prune       Prune multimedia images. The goal is to remove redundent images due to intensive shooting." 
+	echo -e "            MediaM will try to recognise similar images in order of time. Then it will gather" 
+	echo -e "            similar images in prune folders.\n"
+	echo -e "For help of specific command type: mediam <command> --help.\n"
 } 
 
-debug() {
-	if [[ $DEBUG ]]; then 
-		echo "[DEBUG] $1" 
-	fi	
-}
+# Parse and check command
+COMMAND=$1
 
-verbose() {
-	if [[ $VERBOSE ]]; then 
-		echo "$1" 
-	fi	
-}
-
-action() {
-	case "$1" in
-		copy )
-			cp -u -f "$2" "$3"
-			verbose "Copy '$2' to '$3'"
-			;;
-		move )
-			mv -f "$2" "$3"
-			verbose "Move '$2' to '$3'"
-			;;
-		link )
-			cp -u -f -s "$2" "$3"
-			verbose "Link '$2' to '$3'"
-			;;
-	esac
-}
-
-# Initialize base and default values
-ACTION="copy"
-GEO_API_URL="http://maps.googleapis.com/maps/api/geocode/json?latlng=__coordinates__&sensor=false"
+re="^(rename|classify|prune|face)$"
+if [[ ! $COMMAND =~ $re ]]; then
+	display_usage
+	exit 1
+fi
 
 # Parse parameters
-OPTS=$( getopt -o rc:a:vdRh -l rename,classify:,action:,verbose,debug,recursive,help -- "$@" )
-if [ $? != 0 ] ; then 
-	echo "Failed parsing options." >&2 
-	exit 1 
-fi
+OPTS=$( getopt -q -o vdh -l verbose,debug,help -- "$@" )
 
 if [[ "$OPTS" == " --" ]]; then
 	display_usage
@@ -98,41 +49,21 @@ eval set -- "$OPTS"
 
 while true; do
 	case "$1" in
-        -r | --rename )          
-			shift
-			RENAME=true
-            ;;
-	    -c | --classify )
-			shift
-	        CLASSIFY=true
-	        HIERARCHY=${1%/}
-			shift
-	        ;;
-	    -a | --action )
-			shift
-	        ACTION="$1"
-			shift
-	        ;;
         -v | --verbose )
 			shift
 			VERBOSE=true
-			VERBOSE_OPT=-v
 			;;
         -d | --debug )
 			shift
 			DEBUG=true
 			VERBOSE=true
-			VERBOSE_OPT=-v
 			;;
-        -R | --recursive )           
-			shift
-			RECURSIVE=true
-			RECURSIVE_OPT=-r
-            ;;
         -h | --help )
 			shift
-			display_usage
-			break
+			if [[ "$COMMAND" == "" ]]; then
+				display_usage
+				exit 1
+			fi
 			;;
 		-- ) 
 			shift
@@ -140,141 +71,19 @@ while true; do
 			;;
 		* )
 			shift
-			break
 	esac
 done
+
+# Parse arguments and target files or directories
 shift $(($OPTIND - 1))
-SOURCE="${1%/}"
-TARGET="${2%/}"
+SOURCE="${2%/}"
+TARGET="${3%/}"
 
-if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
-if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
-
-debug "RENAME = $RENAME"
-debug "CLASSIFY = $CLASSIFY"
-debug "HIERARCHY = $HIERARCHY"
-debug "ACTION = $ACTION"
-debug "RECURSIVE = $RECURSIVE"
 debug "SOURCE = $SOURCE"
 debug "TARGET = $TARGET"
+debug "COMMAND = $COMMAND"
+debug "DEBUG = $DEBUG"
+debug "VERBOSE = $VERBOSE"
 
-# Some checks
-re="^(copy|move|link)$"
-if [[ ! $ACTION =~ $re ]]; then
-	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
-	display_usage
-	exit 1
-fi
-
-re="^((year|month|day|hour|minute|second|country|state|city|type).*)+$"
-if [[ $CLASSIFY && ! $HIERARCHY =~ $re ]]; then
-	debug "'$HIERARCHY' not match to $re"
-	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
-	display_usage
-	exit 1
-fi
-
-if [[ ! -f "$SOURCE" ]]; then
-	if [[ ! -d "$SOURCE" ]]; then
-		echo "Source file or directory doesn't exists"
-		exit 2
-	fi
-fi
-
-# Execute rename command
-if [[ $RENAME ]]; then
-	verbose "Renaming medias to date time format..."
-	exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
-fi
-
-# Execute classify command
-if [[ $CLASSIFY ]]; then
-	verbose "Launch cassification witn '$HIERARCHY'."
-	if [[ $RECURSIVE ]]; then MAXDEPTH=999; else MAXDEPTH=1; fi
-	debug "MAXDEPTH = $MAXDEPTH"
-	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f; do
-		debug "$f"
-		if [[ -f $f ]];	then
-			debug "$f"
-			filenameWithExt=$(basename "$f")
-			filename=${filenameWithExt%.*}
-			debug "filenameWithExt=$filenameWithExt"
-			debug "filename=$filename"
-
-			re="^([12][0-9]{3})([01][0-9])([0-3][0-9])_([0-2][0-9])([0-5][0-9])([0-5][0-9])$"
-			if [[ $filename =~ $re ]]; then
-				year=${BASH_REMATCH[1]} && debug "year = $year"
-				month=${BASH_REMATCH[2]} && debug "month = $month"
-				day=${BASH_REMATCH[3]} && debug "day = $day"
-				hour=${BASH_REMATCH[4]} && debug "hour = $hour"
-				minute=${BASH_REMATCH[5]} && debug "minute = $minute"
-				second=${BASH_REMATCH[6]} && debug "second = $second"
-
-				newpath=${HIERARCHY/year/$year}
-				newpath=${newpath/month/$month}
-				newpath=${newpath/day/$day}
-				newpath=${newpath/hour/$hour}
-				newpath=${newpath/minute/$minute}
-				newpath=${newpath/second/$second}
-
-				# Make geo informations
-				country=""
-				state=""
-				city=""
-				re="^.*(country|state|city).*$"
-				if [[ $HIERARCHY =~ $re ]]; then
-					debug "Search for coordinates."
-					coordinates=$(exiftool -m -n -p '$GPSLatitude,$GPSLongitude' "$f")
-					debug "coordinates = $coordinates"
-					re="^[0-9]+\.[0-9]+,[0-9]+\.[0-9]+$"
-					if [[ $coordinates =~ $re ]]; then
-						debug "Reverse coordinates using google."
-						finalUrl=${GEO_API_URL/__coordinates__/$coordinates}
-						debug "finalUrl=$finalUrl"
-						json=$(curl -s $finalUrl)
-						debug "json=$json"
-						country=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["country","political"]) ) .long_name')
-						debug "country = $country"
-						state=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["administrative_area_level_1","political"]) ) .long_name')
-						debug "state = $state"
-						city=$(echo $json | jq -r '.results[].address_components[0] | select( .types | contains(["locality","political"]) ) .long_name')
-						debug "city = $city"
-					fi
-					if [[ "$country" == "" ]]; then country="Unknown country"; fi
-					if [[ "$state" == "" ]]; then state="Unknown state"; fi
-					if [[ "$city" == "" ]]; then city="Unknown city"; fi
-					newpath=${newpath/country/$country}
-					newpath=${newpath/state/$state}
-					newpath=${newpath/city/$city}
-				fi
-
-				# Make file type
-				re="^.*(type).*$"
-				if [[ $HIERARCHY =~ $re ]]; then
-					debug "Search for mime type."
-					mimetype=$(exiftool -mimetype -s -s -s "$f")
-					debug "mimetype = $mimetype"
-					re="^(.*)/.*$"
-					if [[ $mimetype =~ $re ]]; then
-						mediaType=${BASH_REMATCH[1]}
-					fi
-					if [[ "$mediaType" == "" ]]; then country="Unknown type"; fi
-					newpath=${newpath/type/$mediaType}
-				fi
-
-				# Finally do the action
-				newpath="$TARGET/$newpath"
-				debug "newpath = $newpath"
-
-				mkdir -p "$newpath"
-
-				target_file="$newpath/$filenameWithExt"
-				debug "target_file=$target_file"
-
-				action $ACTION "$f" "$target_file"
-			else
-				debug "filename '$filename' not match regex '$re'"
-			fi
-		fi
-	done
-fi
+# Import and call file of command
+. ./inc/$COMMAND

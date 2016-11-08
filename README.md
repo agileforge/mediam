@@ -3,12 +3,15 @@ Mediam (media maid) is a tools made to help to prune, classify, purge, etc. your
 
 ## Prerequisit
 Before using mediam, check that exiftool and jq are installed on your system.
-* exiftool             http://www.sno.phy.queensu.ca/~phil/exiftool/
-* jq                   https://stedolan.github.io/jq/
+* **exiftool**             http://www.sno.phy.queensu.ca/~phil/exiftool/
+* **jq**                   https://stedolan.github.io/jq/
+* **imagemagick**          http://www.imagemagick.org/script/index.php
 
 `sudo apt-get install exiftool`
 
 `sudo apt-get install jq`
+
+`sudo apt-get install imagemagick`
 
 # Usage
 mediam -h  -v -d -R -r -c HIERARCHY -a ACTION [source] [target]
