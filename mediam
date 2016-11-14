@@ -11,8 +11,12 @@
 # Save opts
 BASE_OPTS="$@"
 
+# Get base dir
+EXEC_FILE_PATH=$( readlink -f "$0" )
+EXEC_BASEDIR=$(dirname "${EXEC_FILE_PATH}")
+
 # Include common script
-. ./inc/common 
+. "$EXEC_BASEDIR/inc/common" 
 
 display_usage() { 
 	echo -e "Provide facilities to classify multimedia files as pictures or video taken by a camera. \n" 
@@ -86,4 +90,4 @@ debug "DEBUG = $DEBUG"
 debug "VERBOSE = $VERBOSE"
 
 # Import and call file of command
-. ./inc/$COMMAND
+. "$EXEC_BASEDIR/inc/$COMMAND"

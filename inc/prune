@@ -106,52 +106,58 @@ verbose "Launch prune in $SOURCE."
 pruneCount=1
 similarCount=0
 
-find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | sort -z | while IFS= read -r -d '' f; do
-	if [[ -f $f ]]; then
-		debug "$f"
-		filenameWithExt=$(basename "$f")
+if [[ ! $COMMIT ]]; then
+	verbose "Start to find similar images."
+	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | sort -z | while IFS= read -r -d '' f; do
+		if [[ -f $f ]]; then
+			debug "$f"
+			filenameWithExt=$(basename "$f")
 
-		typeof "$f"
-		mediaType=$__result__
-		if [[ "$mediaType" == "image" ]]; then
-			if [[ -f $previousImage ]]; then
-				previousFilenameWithExt=$(basename "$previousImage")
-				debug "$f"
-				difference=$(compare -quiet -metric NCC "$previousImage" "$f" null: 2>&1)
-				re="^[0-9]\.{0,1}[0-9]*$"
-				if [[ $difference =~ $re ]]; then
-					debug "$difference >= $TOLERANCE"
-					isDifferent=$(echo "$difference >= $TOLERANCE" | bc -l)
-					if [[ $isDifferent == 1 ]]; then
-						verbose "'$previousImage' seems similar to '$f' ($difference)."
-						stillSimilar=1
-						similarCount=$(( $similarCount + 1 ))
-						pruneDir="$TARGET/$pruneCount"
-						debug "pruneDir = $pruneDir"
-						mkdir -p "$pruneDir"
-						if [[ ! -f "$pruneDir/$previousFilenameWithExt" ]]; then 
-							ln -s "$previousImage" "$pruneDir/$previousFilenameWithExt"; 
-						fi
-						ln -s "$f" "$pruneDir/$filenameWithExt"
-						echo "$f" >> "$pruneDir/.prune"
-						verbose "Add image '$f' to prune directory '$pruneDir'."
-					else
-						debug "'$previousImage' seems different to '$f' ($difference)."
-						
-						if [[ $stillSimilar > 0 ]]; then 
+			typeof "$f"
+			mediaType=$__result__
+			if [[ "$mediaType" == "image" ]]; then
+				if [[ -f $previousImage ]]; then
+					previousFilenameWithExt=$(basename "$previousImage")
+					debug "$f"
+					difference=$(compare -quiet -metric NCC "$previousImage" "$f" null: 2>&1)
+					re="^[0-9]\.{0,1}[0-9]*$"
+					if [[ $difference =~ $re ]]; then
+						debug "$difference >= $TOLERANCE"
+						isDifferent=$(echo "$difference >= $TOLERANCE" | bc -l)
+						if [[ $isDifferent == 1 ]]; then
+							verbose "'$previousImage' seems similar to '$f' ($difference)."
+							stillSimilar=1
 							similarCount=$(( $similarCount + 1 ))
-							mv "$pruneDir" "$pruneDir_$similarCount"
-							pruneCount=$(( $pruneCount + 1 )); 
+							pruneDir="$TARGET/$pruneCount"
+							debug "pruneDir = $pruneDir"
+							mkdir -p "$pruneDir"
+							if [[ ! -f "$pruneDir/$previousFilenameWithExt" ]]; then 
+								ln -s "$previousImage" "$pruneDir/$previousFilenameWithExt"; 
+							fi
+							ln -s "$f" "$pruneDir/$filenameWithExt"
+							echo "$f" >> "$pruneDir/.prune"
+							verbose "Add image '$f' to prune directory '$pruneDir'."
+						else
+							debug "'$previousImage' seems different to '$f' ($difference)."
+							
+							if [[ $stillSimilar > 0 ]]; then 
+								similarCount=$(( $similarCount + 1 ))
+								mv "$pruneDir" "$pruneDir_$similarCount"
+								pruneCount=$(( $pruneCount + 1 )); 
+							fi
+							stillSimilar=0
+							similarCount=0
 						fi
-						stillSimilar=0
-						similarCount=0
+					else
+						debug "Compare return error '$difference'. Not a comparable value."	
 					fi
-				else
-					debug "Compare return error '$difference'. Not a comparable value."	
 				fi
-			fi
 
-			previousImage=$f
+				previousImage=$f
+			fi
 		fi
-	fi
-done	
+	done	
+else
+	verbose "Start to commit prune selections."
+
+fi
