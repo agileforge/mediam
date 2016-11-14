@@ -98,7 +98,7 @@ done
 debug "ACTION = $ACTION"
 debug "HIERARCHY = $HIERARCHY"
 
-# Some checks
+# Options checks
 re="^(copy|move|link)$"
 if [[ ! $ACTION =~ $re ]]; then
 	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
@@ -112,6 +112,20 @@ if [[ ! $HIERARCHY =~ $re ]]; then
 	echo -e "The hierarchy of argument --classify contains a not recognised element.\n"
 	display_classify_usage
 	exit 1
+fi
+
+# Args checks
+if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
+if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
+
+debug "SOURCE = $SOURCE"
+debug "TARGET = $TARGET"
+
+if [[ ! -f "$SOURCE" ]]; then
+	if [[ ! -d "$SOURCE" ]]; then
+		echo "Source file or directory doesn't exists: $SOURCE"
+		exit 2
+	fi
 fi
 
 # Execute classify command

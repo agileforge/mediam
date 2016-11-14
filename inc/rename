@@ -61,6 +61,9 @@ debug "RECURSIVE_OPT = $RECURSIVE_OPT"
 if [[ "$SOURCE" == "" ]]; then SOURCE="$(pwd)"; fi
 if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
 
+debug "SOURCE = $SOURCE"
+debug "TARGET = $TARGET"
+
 if [[ ! -f "$SOURCE" ]]; then
 	if [[ ! -d "$SOURCE" ]]; then
 		echo "Source file or directory doesn't exists: $SOURCE"

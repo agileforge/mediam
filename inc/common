@@ -39,7 +39,7 @@ action() {
 
 typeof() {
 	debug "Search for mime type."
-	local mimetype=$(exiftool -mimetype -s -s -s "$f")
+	local mimetype=$(exiftool -mimetype -m -s -s -s "$f")
 	local mediaType=""
 	debug "mimetype = $mimetype"
 	re="^(.*)/.*$"
