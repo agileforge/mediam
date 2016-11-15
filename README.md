@@ -1,5 +1,5 @@
 # mediam
-Mediam (media maid) is a tools made to help to prune, classify, purge, etc. your multi-media files like images and videos.
+Mediam (media maid) is a tools made to help to renam, classify, prune, etc. your multi-media files like images and videos.
 
 ## Prerequisit
 Before using mediam, check that exiftool and jq are installed on your system.
@@ -13,44 +13,21 @@ Before using mediam, check that exiftool and jq are installed on your system.
 
 `sudo apt-get install imagemagick`
 
-# Usage
-mediam -h  -v -d -R -r -c HIERARCHY -a ACTION [source] [target]
+## Commands
+Available commands are "rename", "classify" and "prune".
 
-## Arguments:
+### Command rename
 
-**-r  --rename**                Rename files with the date taken using format yyMMdd_hhmmss.
+Use it to rename all media files (images and video) in a directory in a standard date time 
+format yyyymmdd_HHMMSS. This allow to order the files chronologicaly. MediaM gets the date 
+time taken found in EXIF informations.
 
-**-R  --recursive**             Execute action(s) recursively.
+You cand do it recursively with option -R . 
 
-**-c  --classify=HIERARCHY**    Classify the images according the specified TYPE.
+Ex: `mediam rename -R /path/of/your/medias`
 
-**-a  --action=ACTION**         Action type. Could be 'copy', 'move' or 'link'.
+### Command classify
 
-**-v  --verbose**               Display details while executing actions.
+Use it to classify your media files (images and video) in a given hierarchy.
 
-**-d  --debug**                 Display more details while executing actions.
-
-**-h  --help**                  Display this help and exit.
-
-### HIERARCHY
-Hrearchy of classification. Possible to specifiy several formats or levels. If separated by slash (/) then generate folders.
-
-Ex: **year-month/type** => create directories for each years-month, and then inside a directory for each type.
-> * 2010-12/image
-> * 2011-01/video
-
-Possible values are:
-> * **year**: create a directory for each years of media.
-> * **month**: create a directory for each months of media.
-> * **day**: create a directory for each days of media.
-> * **media**: create a directory for each type of media (image or video)
-> * **country**: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF.
-> * **state**: create a directory for each country. Try to get it from google services according GPS coordinate in EXIF.
-> * **city**: create a directory for each city. Try to get it from google services according GPS coordinate in EXIF.
-> * **type**: create a directory for each type of media (video or image).
-
-### ACTION
-Action to do while classifying. Default is 'copy'.
-> * **copy**: make a copy of media in new classification structure.
-> * **move**: move the file in new classification structure.
-> * **link**: create a symbolic link of media in the new classification structure.
+Ex: `mediam classify -R -a link -h year/month/type /path/to/your/media /target/path
