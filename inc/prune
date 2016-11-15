@@ -10,6 +10,7 @@
 
 # Initialization
 TOLERANCE=0.5
+PRUNE_HISTORY_FILENAME=".prune"
 
 # prune usage
 display_prune_usage() { 
@@ -101,13 +102,11 @@ if [[ ! -f "$SOURCE" ]]; then
 fi
 
 # Execute prune command
-verbose "Launch prune in $SOURCE."
-
-pruneCount=1
-similarCount=0
-
 if [[ ! $COMMIT ]]; then
-	verbose "Start to find similar images."
+	pruneCount=1
+	similarCount=0
+	verbose "Start to find similar images in $SOURCE."
+
 	find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | sort -z | while IFS= read -r -d '' f; do
 		if [[ -f $f ]]; then
 			debug "$f"
@@ -120,29 +119,36 @@ if [[ ! $COMMIT ]]; then
 					previousFilenameWithExt=$(basename "$previousImage")
 					debug "$f"
 					difference=$(compare -quiet -metric NCC "$previousImage" "$f" null: 2>&1)
+
 					re="^[0-9]\.{0,1}[0-9]*$"
 					if [[ $difference =~ $re ]]; then
 						debug "$difference >= $TOLERANCE"
 						isDifferent=$(echo "$difference >= $TOLERANCE" | bc -l)
+
 						if [[ $isDifferent == 1 ]]; then
 							verbose "'$previousImage' seems similar to '$f' ($difference)."
 							stillSimilar=1
-							similarCount=$(( $similarCount + 1 ))
 							pruneDir="$TARGET/$pruneCount"
 							debug "pruneDir = $pruneDir"
+							
 							mkdir -p "$pruneDir"
-							if [[ ! -f "$pruneDir/$previousFilenameWithExt" ]]; then 
-								ln -s "$previousImage" "$pruneDir/$previousFilenameWithExt"; 
+							if [[ ! -f "$pruneDir/$previousFilenameWithExt" ]]; then
+								if [[ $similarCount == 0 ]]; then 
+									ln -s "$previousImage" "$pruneDir/$previousFilenameWithExt"; 
+									echo "$previousImage" >> "$pruneDir/$PRUNE_HISTORY_FILENAME"
+								fi
 							fi
 							ln -s "$f" "$pruneDir/$filenameWithExt"
-							echo "$f" >> "$pruneDir/.prune"
+							echo "$f" >> "$pruneDir/$PRUNE_HISTORY_FILENAME"
+
+							similarCount=$(( $similarCount + 1 ))
 							verbose "Add image '$f' to prune directory '$pruneDir'."
 						else
 							debug "'$previousImage' seems different to '$f' ($difference)."
 							
 							if [[ $stillSimilar > 0 ]]; then 
 								similarCount=$(( $similarCount + 1 ))
-								mv "$pruneDir" "$pruneDir_$similarCount"
+								mv "$pruneDir" "$pruneDir ($similarCount)"
 								pruneCount=$(( $pruneCount + 1 )); 
 							fi
 							stillSimilar=0
@@ -160,4 +166,19 @@ if [[ ! $COMMIT ]]; then
 else
 	verbose "Start to commit prune selections."
 
+	find "$SOURCE" -type f -print0 -name "$PRUNE_HISTORY_FILENAME" | sort -z | while IFS= read -r -d '' f; do
+		pruneDir=$(dirname "${f}")
+		debug "Reading prune file file '$f' to find deleted files."
+		while read p; do
+			debug "p = $p"
+			filenameWithExt=$(basename "$p")
+			linked="$pruneDir/$filenameWithExt"
+			debug "Check if link '$linked' still exists."
+			if [[ ! -f "$linked" ]]; then
+				debug "'$linked' has been deleted, so delete the original file '$p'."
+				rm -f "$p"
+				verbose "'$p' has been pruned (deleted)."
+			fi
+		done <"$f"
+	done
 fi
