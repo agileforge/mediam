@@ -47,6 +47,6 @@ Prune is used to remove redundant pictures dur to intensive shooting. It will tr
 
 A prune process is made in three times.
 
-0. Recognition of similar images. This will create a directoriy per type of similar images and put link to similar images inside. Ex: `mediam prune /path/to/your/media /target/prune/path`
-0. Selection of images to delete. Just remove links in prune directories of images that have to be deleted. 
-0. Commit. This will synchronize your deletion choice in the source directory. Ex: `mediam prune -c /target/prune/path`
+1. Recognition of similar images. This will create a directoriy per type of similar images and put link to similar images inside. Ex: `mediam prune /path/to/your/media /target/prune/path`
+1. Selection of images to delete. Just remove links in prune directories of images that have to be deleted. 
+1. Commit. This will synchronize your deletion choice in the source directory. Ex: `mediam prune -c /target/prune/path`
