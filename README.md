@@ -28,7 +28,7 @@ Ex: `mediam rename -R /path/of/your/medias`
 ### Command classify
 Use it to classify your media files (images and video) in a given hierarchy. You can classify by copying, moving or linking (`-a` option).
 
-With option `-h` you can specify the hierarchy to use. If the separator is `/`, it will create a directory for nxte hierarchy level.
+With option `-h` you can specify the hierarchy to use. If the separator is `/`, it will create a directory for each hierarchy level.
 
 Ex: `-t year-month/country` will create directories per year-month (2011-12), then sub directories by county.
 
