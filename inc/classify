@@ -15,7 +15,7 @@ display_classify_usage() {
 	echo -e "Arguments:" 
 	echo -e "-R  --recursive                   Execute action(s) recursively."
 	echo -e "-H  --hierarchy=HIERARCHY         Classify the images according the specified HIERARCHY."
-	echo -e "-a  --action=ACTION               Action type. Could be 'copy', 'move' or 'link'."
+	echo -e "-a  --action=ACTION               Action type. Could be 'copy', 'move', 'link' or 'hlink'."
 	echo -e "-v  --verbose                     Display details while executing actions."
 	echo -e "-d  --debug                       Display more details while executing actions."
 	echo -e "-h  --help                        Display this help and exit."
@@ -43,6 +43,7 @@ display_classify_usage() {
 	echo -e "    copy: make a copy of media in new classification structure."
 	echo -e "    move: move the file in new classification structure." 
 	echo -e "    link: create a symbolic link of media in the new classification structure." 
+	echo -e "    hlink: create a hard link of media in the new classification structure."
 	echo -e "\n" 
 } 
 
@@ -101,9 +102,9 @@ debug "ACTION = $ACTION"
 debug "HIERARCHY = $HIERARCHY"
 
 # Options checks
-re="^(copy|move|link)$"
+re="^(copy|move|link|hlink)$"
 if [[ ! $ACTION =~ $re ]]; then
-	echo -e "Argument --action must be 'copy', 'move' or 'link'.\n"
+	echo -e "Argument --action must be 'copy', 'move', link or 'hlink'.\n"
 	display_classify_usage
 	exit 1
 fi
