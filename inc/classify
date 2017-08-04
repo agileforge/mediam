@@ -194,7 +194,7 @@ find "$SOURCE" -maxdepth $MAXDEPTH -type f -print0 | while IFS= read -r -d '' f;
 			if [[ $HIERARCHY =~ $re ]]; then
 				typeof "$f"
 				mediaType=$__result__
-				if [[ "$mediaType" == "" ]]; then country="Unknown type"; fi
+				if [[ "$mediaType" == "" ]]; then mediaType="Unknown type"; fi
 				newpath=${newpath/type/$mediaType}
 			fi
 

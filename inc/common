@@ -41,13 +41,16 @@ action() {
 }
 
 typeof() {
-	debug "Search for mime type."
-	local mimetype=$(exiftool -mimetype -m -s -s -s "$f")
-	local mediaType=""
-	debug "mimetype = $mimetype"
-	re="^(.*)/.*$"
-	if [[ $mimetype =~ $re ]]; then
-		mediaType=${BASH_REMATCH[1]}
-	fi	
+	#debug "Search for mime type."
+	#local mimetype=$(exiftool -mimetype -m -s -s -s "$f")
+	#local mediaType=""
+	#debug "mimetype = $mimetype"
+	re_image="^.*\.(gif|jpg|jpeg|tiff|png)$"
+	re_video="^.*\.(mov|avi|wmv|flv|3gp|mp4|mpg)$"
+	if [[ $f =~ $re_image ]]; then
+		mediaType="image"
+	elif [[ $f =~ $re_video ]]; then
+		mediaType="video"
+	fi
 	__result__=$mediaType
 }
