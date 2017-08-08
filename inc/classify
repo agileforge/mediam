@@ -68,22 +68,22 @@ eval set -- "$OPTS"
 
 while true; do
 	case "$1" in
-	    -H | --hierarchy )
+	    	-H | --hierarchy )
 			shift
-	        HIERARCHY=${1%/}
+	        	HIERARCHY=${1%/}
 			shift
-	        ;;
-	    -a | --action )
+	        	;;
+	    	-a | --action )
 			shift
-	        ACTION="$1"
+	        	ACTION="$1"
 			shift
-	        ;;
-        -R | --recursive )           
+	        	;;
+		-R | --recursive )           
 			shift
 			RECURSIVE=true
 			RECURSIVE_OPT=-r
 			MAXDEPTH=999
-            ;;
+            		;;
 		-h | --help )
 			display_classify_usage
 			break

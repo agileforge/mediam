@@ -15,11 +15,16 @@ display_rename_usage() {
 	echo -e "$0 rename -R -v -d -h [source] [target]\n" 
 	echo -e "Arguments:" 
 	echo -e "-R  --recursive                   Execute rename recursively."
+	echo -e "-f  --force                       Force to recalculate the file name from EXIF taken date."
 	echo -e "-v  --verbose                     Display details while executing actions."
 	echo -e "-d  --debug                       Display more details while executing actions."
 	echo -e "-h  --help                        Display this help and exit."
 	echo -e "" 
 } 
+
+# Default value
+FORCE=false
+MAXDEPTH=1
 
 # Parse parameters
 OPTS=$( getopt -o vdRh -l verbose,debug,recursive,help -- $BASE_OPTS )
@@ -38,20 +43,26 @@ eval set -- "$OPTS"
 while true; do
 	case "$1" in
         -R | --recursive )           
-			shift
-			RECURSIVE_OPT=-r
-            ;;
-		-h | --help )
-			display_rename_usage
-			break
-			;;
-		-- ) 
-			shift
-			break 
-			;;
-		* )
-			shift
-			;;
+		shift
+		RECURSIVE_OPT=-r
+		MAXDEPTH=999
+		shift
+		;;
+        -f | --force )
+		FORCE=true
+		shift
+            	;;
+	-h | --help )
+		display_rename_usage
+		break
+		;;
+	-- ) 
+		shift
+		break 
+		;;
+	* )
+		shift
+		;;
 	esac
 done
 
@@ -63,6 +74,8 @@ if [[ "$TARGET" == "" ]]; then TARGET="$SOURCE"; fi
 
 debug "SOURCE = $SOURCE"
 debug "TARGET = $TARGET"
+debug "MAXDEPTH = $MAXDEPTH"
+debug "FORCE = $FORCE"
 
 if [[ ! -f "$SOURCE" ]]; then
 	if [[ ! -d "$SOURCE" ]]; then
@@ -78,4 +91,12 @@ fi
 
 # Execute rename command
 verbose "Renaming medias to date time format..."
-exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
+if [[ $FORCE == true ]]; then
+	debug "Force to recalculate name of all files"
+	exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
+else 
+	find "$SOURCE" -maxdepth $MAXDEPTH -regextype posix-extended -not -regex ".*/[0-9]{8}\_[0-9]{6}.*\..*" -type f -print0 | while IFS= read -r -d '' f; do
+		debug "Rename only file $f"
+		exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $VERBOSE_OPT "$f"
+	done
+fi
