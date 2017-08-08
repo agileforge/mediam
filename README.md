@@ -8,9 +8,7 @@ Before using mediam, check that following packages are installed on your system.
 * **imagemagick**          http://www.imagemagick.org/script/index.php
 
 ```{r, engine='bash', count_lines}
-sudo apt-get install exiftool
-sudo apt-get install jq
-sudo apt-get install imagemagick
+sudo apt-get install exiftool jq imagemagick
 ```
 
 ## Commands
