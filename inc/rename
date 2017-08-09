@@ -93,10 +93,10 @@ fi
 verbose "Renaming medias to date time format..."
 if [[ $FORCE == true ]]; then
 	debug "Force to recalculate name of all files"
-	exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
+	exiftool -q '-filename<DateTimeOriginal' -d %Y%m%d_%H%M%S%%-c.%%le $RECURSIVE_OPT $VERBOSE_OPT "$SOURCE"
 else 
 	find "$SOURCE" -maxdepth $MAXDEPTH -regextype posix-extended -not -regex ".*/[0-9]{8}\_[0-9]{6}.*\..*" -type f -print0 | while IFS= read -r -d '' f; do
 		debug "Rename only file $f"
-		exiftool -q '-filename<CreateDate' -d %Y%m%d_%H%M%S%%-c.%%le $VERBOSE_OPT "$f"
+		exiftool -q '-filename<DateTimeOriginal' -d %Y%m%d_%H%M%S%%-c.%%le $VERBOSE_OPT "$f"
 	done
 fi
