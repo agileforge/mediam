@@ -89,5 +89,11 @@ debug "COMMAND = $COMMAND"
 debug "DEBUG = $DEBUG"
 debug "VERBOSE = $VERBOSE"
 
+(
+# Export variables that will be used in other scripts
+export VERBOSE
+export DEBUG
+
 # Import and call file of command
 . "$EXEC_BASEDIR/inc/$COMMAND"
+)

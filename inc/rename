@@ -85,9 +85,10 @@ if [[ ! -f "$SOURCE" ]]; then
 fi
 
 # Some initializations to execute
-if [[ $VEBOSE == true ]]; then
-	$VERBOSE_OPT="-v"
+if [[ $VERBOSE == true ]]; then
+	VERBOSE_OPT="-v"
 fi
+debug "VERBOSE_OPT = $VERBOSE_OPT"
 
 # Execute rename command
 verbose "Renaming medias to date time format..."
