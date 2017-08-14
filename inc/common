@@ -14,8 +14,7 @@ debug() {
 	fi	
 }
 
-verbose() {
-	if [[ $VERBOSE ]]; then 
+
 		echo "$1" 
 	fi	
 }
@@ -47,10 +46,13 @@ typeof() {
 	#debug "mimetype = $mimetype"
 	re_image="^.*\.(gif|jpg|jpeg|tiff|png)$"
 	re_video="^.*\.(mov|avi|wmv|flv|3gp|mp4|mpg)$"
+	re_audio="^.*\.(mp3|ogg|m4a|flac|wav)$"
 	if [[ $f =~ $re_image ]]; then
 		mediaType="image"
 	elif [[ $f =~ $re_video ]]; then
 		mediaType="video"
+	elif [[ $f =~ $re_audio ]]; then
+		mediaType="audio"
 	fi
 	__result__=$mediaType
 }
