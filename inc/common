@@ -47,7 +47,7 @@ typeof() {
 	#debug "mimetype = $mimetype"
 	
 	re_image="^.*\.(gif|jpg|jpeg|tiff|png)$"
-	re_video="^.*\.(mov|avi|wmv|flv|3gp|mp4|mpg)$"
+	re_video="^.*\.(mov|avi|wmv|flv|3gp|mp4|mpg|mts)$"
 	re_audio="^.*\.(mp3|ogg|m4a|flac|wav)$"
 	
 	if [[ $f =~ $re_image ]]; then
